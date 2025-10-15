@@ -24,7 +24,7 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.USER, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    prompts = relationship("Prompt", back_populates="owner",foreign_keys="prompt.owner_id")
+    prompts = relationship("Prompt", back_populates="owner")
     images = relationship("Image", back_populates="owner",foreign_keys="Image.owner_id")
     generated_images = relationship("Image", back_populates="generator", foreign_keys="Image.generated_by") 
 
@@ -36,7 +36,7 @@ class Prompt(Base):
     meta_data = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    owner = relationship("User", back_populates="prompts",foreign_keys=[owner_id])
+    owner = relationship("User", back_populates="prompts")
     images = relationship("Image", back_populates="prompt")
 
 class Image(Base):
