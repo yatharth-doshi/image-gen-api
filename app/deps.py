@@ -1,6 +1,6 @@
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer,OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status,Request
+from fastapi.security import HTTPBearer
 from app.database import SessionLocal
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -12,7 +12,7 @@ from jose import jwt, JWTError
 SECRET_KEY = "your_secret_key_here"  # Change to a secure key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 def get_db():
     db = SessionLocal()
@@ -46,8 +46,8 @@ def create_refresh_token(user_id: int) -> str:
     """
     Create a refresh token valid for longer (e.g., 7 days).
     """
-    expire = datetime.utcnow() + timedelta(days=7)
-    payload = {"sub": str(user_id), "exp": expire}
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    payload = {"sub": str(user_id), "type": "refresh", "exp": expire}
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token
 
@@ -59,21 +59,30 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
-def get_current_payload(token: str = Depends(oauth2_scheme))-> dict:
-    
+
+def get_current_payload(request: Request) -> dict:
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization token missing or invalid format"
+        )
+
+    token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
 
-def get_current_user(payload: dict = Depends(get_current_payload), db: Session = Depends(get_db)) -> User:
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = db.query(User).filter(User.id == user_id).first()
+
+def get_current_user(request: Request) -> User:
+    user = getattr(request.state, "user", None)
     if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     return user
 
 def require_roles(*allowed_roles: RoleEnum):

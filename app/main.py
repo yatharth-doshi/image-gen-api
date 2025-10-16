@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
+from app.middleware.auth_middleware import AuthMiddleware
 from app.routes import auth , user , admin , superadmin
 
 # Create database tables
@@ -15,6 +16,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AuthMiddleware)
 
 # Include routers
 app.include_router(auth.router)

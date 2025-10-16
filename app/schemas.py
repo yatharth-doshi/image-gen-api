@@ -16,15 +16,19 @@ class TokenPayload(BaseModel):
     iat: int
     exp: int
 
+class TokenRefresh(BaseModel):
+    refresh_token: str
+
+
 class UserCreate(BaseModel):
     email: EmailStr
     username: str
     password: str
-    
+    role_key: Optional[str] = None 
 
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 

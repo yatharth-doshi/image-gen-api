@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.schemas  import UserLogin, Token,UserCreate
-from app.models.models import User,RoleEnum
-from app.database import get_db
-from app.deps import get_password_hash, verify_password, create_access_token ,ACCESS_TOKEN_EXPIRE_MINUTES
+from fastapi import APIRouter, Depends, HTTPException, Body
+from sqlalchemy.orm import Session 
+from app.schemas  import UserLogin, Token,UserCreate 
+from app.models.models import User,RoleEnum 
+from app.database import get_db 
+from app.deps import get_password_hash, verify_password, create_access_token,create_refresh_token ,ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -49,10 +49,33 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(user_id=db_user.id, email=db_user.email, role=db_user.role.value)
     refresh_token = create_refresh_token(user_id=db_user.id)
     
-    return {
+    return {    
         "access_token": access_token,
         "token_type": "bearer",
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "refresh_token": refresh_token
         
 }
+
+@router.post("/refresh", response_model=Token)
+def refresh_token_endpoint(refresh_token: str = Body(...), db: Session = Depends(get_db)):
+    try:
+        payload = decode_token(refresh_token)
+        user_id = int(payload.get("sub"))
+    except:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # Generate new access token
+    access_token = create_access_token(user_id=user.id, email=user.email, role=user.role.value)
+    refresh_token = create_refresh_token(user_id=user.id)  # Optional: issue new refresh token
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "refresh_token": refresh_token
+    }

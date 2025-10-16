@@ -8,7 +8,7 @@ from app.database import Base
 class RoleEnum(str, enum.Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
     ADMIN = "ADMIN"
-    USER = "USER"
+    USER = "USE R"
 
 class ImageStatus(str, enum.Enum):
     PENDING = "PENDING"
