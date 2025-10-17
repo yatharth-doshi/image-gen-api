@@ -1,36 +1,22 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
 from app.middleware.auth_middleware import AuthMiddleware
-from app.routes import auth , user , admin , superadmin
+from app.routes import auth, generation
 
-# Create database tables
+# Create tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Image Management System", version="1.0.0")
+app = FastAPI(title="Image Generation System")
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Add middleware
+# app.add_middleware(AuthMiddleware)
 
+# Include routes
+app.include_router(auth.router, prefix="/api")
 app.add_middleware(AuthMiddleware)
-
-# Include routers
-app.include_router(auth.router)
-app.include_router(superadmin.router)
-app.include_router(admin.router)
-app.include_router(user.router)
-
-
+app.include_router(generation.router,prefix="/api")
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to Image Management System"}
+    return {"message":"API is running"}
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
