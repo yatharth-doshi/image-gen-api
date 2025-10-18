@@ -8,7 +8,7 @@ from app.models import User
 from app.enums.user_type import UserType
 
 
-EXCLUDED_PATHS = ["/auth", "/docs", "/openapi.json"]
+EXCLUDED_PATHS = ["/api/auth/login", "/api/auth/register", "/docs", "/openapi.json"]
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

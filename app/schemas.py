@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from app.enums.user_type import UserType
 
 # ---------------- Registration & Login ----------------
 class UserCreate(BaseModel):
@@ -7,6 +8,7 @@ class UserCreate(BaseModel):
     lastname: str
     email: EmailStr
     password: str
+    user_type: Optional[UserType] = UserType.USER
 
 class UserLogin(BaseModel):
     email: EmailStr
