@@ -25,6 +25,7 @@ class GenerationSession(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"))
     reference_image = Column(String, nullable=False)  # store relative path
     input_prompt = Column(Text, nullable=False)
+    output_path = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     user = relationship("User", back_populates="sessions")

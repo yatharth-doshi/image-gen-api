@@ -2,7 +2,7 @@ from fastapi.responses import JSONResponse
 from functools import wraps
 import os
 
-def success_response(message: str, data: dict = None):
+def success_response(message: str, data: dict = None, status_code: int = 200)   :
     response_content = {
         "status": "success",
         "message": message,
@@ -14,7 +14,7 @@ def success_response(message: str, data: dict = None):
 def error_response(message: str, dev_message: str = None, status_code: int = 400):
     environment = os.getenv("ENVIRONMENT", "production")
     print(os.getenv("ENVIRONMENT"), "NOW")
-    response_content = {
+    response_content = {    
         "status": "error",
         "message": message,
         "data": None

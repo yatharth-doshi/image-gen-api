@@ -20,7 +20,11 @@ class Token(BaseModel):
     refresh_token: str
     token_type: str = "Bearer"
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
 # ---------------- Generation ----------------
 class GenerationCreate(BaseModel):
     input_prompt: str
-    reference_image: Optional[str] = None  # relative path
+    
