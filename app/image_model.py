@@ -2,6 +2,8 @@
 import os
 import subprocess
 from dotenv import load_dotenv
+from uuid import uuid4
+
 
 
 load_dotenv()
@@ -17,18 +19,18 @@ load_dotenv()
 # Hugging Face login
 # -----------------------------
 from huggingface_hub import login as hf_login
-
 def login_hf(token: str):
     """
     Login to Hugging Face Hub
     """
     hf_login(token=token, add_to_git_credential=False)
 
+
 # -----------------------------
 # Run 3D generation
 # -----------------------------
 run_py_path = "stable-fast-3d/run.py"
-def generate_3d(input_image_path: str, output_dir: str = "output") -> str:
+def generate_3d(input_image_path: str, output_dir: str = "app/temp_output") -> str:
     """
     Takes an input image and generates 3D output using the stable-fast-3d model.
     
@@ -40,16 +42,26 @@ def generate_3d(input_image_path: str, output_dir: str = "output") -> str:
         Path to generated 3D output folder
     """
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Run the model's run.py script
-    command = f"python {run_py_path} {input_image_path} --output-dir {output_dir}"
+
+    # Unique filename for output (so each generation is separate)
+    output_filename = f"{uuid4()}.png"
+    output_path = os.path.join(output_dir, output_filename)
+
+    # Run your 3D generation script
+    command = f"python {run_py_path} {input_image_path} --output {output_path}"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    
+
     if result.returncode != 0:
         raise RuntimeError(f"3D generation failed:\n{result.stderr}")
     
-    # The output is saved in output_dir
-    return output_dir
+   
+    
+    if not os.path.exists(output_path):
+        raise FileNotFoundError(f"Expected output file not found: {output_path}")
+    
+
+    # Return the full file path (like "app/temp_output/abc123.png")
+    return output_path
 
 # -----------------------------
 # Example usage (for testing)

@@ -5,3 +5,6 @@ app/uploads/
 images/
 __pycache__/
 stable-fast-3d/
+app/output/
+app/temp_output/
+.DS_Store

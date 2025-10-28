@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -26,6 +26,8 @@ class GenerationSession(Base):
     reference_image = Column(String, nullable=False)  # store relative path
     input_prompt = Column(Text, nullable=False)
     output_path = Column(String, nullable=True)
+    approved = Column(Boolean, default=False)
+    attempts = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     user = relationship("User", back_populates="sessions")
