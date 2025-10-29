@@ -17,11 +17,10 @@ router = APIRouter(prefix="/generate", tags=["generation"])
 
 UPLOAD_DIR = "app/uploads"
 OUTPUT_DIR = "app/outputs"
-TEMP_OUTPUT_DIR = "app/temp_output"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(TEMP_OUTPUT_DIR, exist_ok=True)
+
 
 
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -52,14 +51,17 @@ async def generate(
             buffer.write(await reference_image.read())
     
         relative_path = f"uploads/{filename}"
-        
-        output_path = generate_3d(file_path, output_dir=TEMP_OUTPUT_DIR)
+        output_filename = f"{uuid4()}.png"
+        output_path = os.path.join(OUTPUT_DIR, output_filename)
+
+        # Generate the image
+        relative_output_path = generate_3d(file_path, output_path)
     # Save path to DB (not file itself)
         session = GenerationSession(
             user_id=user.user_id,
             reference_image=relative_path,
             input_prompt=input_prompt,
-            output_path=output_path
+            output_path=relative_output_path
          )
 
         db.add(session)
@@ -71,7 +73,7 @@ async def generate(
         data={
             "session_id": session.session_id,
             "reference_image": relative_path,
-             "temp_output_dir": output_path
+             "temp_output_dir":relative_output_path
         },
         status_code=201
   
@@ -83,41 +85,30 @@ async def generate(
             dev_message=str(e),   # 🔥 this shows detailed reason if ENVIRONMENT=development
             status_code=500
         )
-    
+
 @router.post("/approve/{session_id}")
 def approve_generated_image(session_id: int, db: Session = Depends(get_db)):
     """
-    Approve the generated image — marks as approved and moves the file to output folder.
+    Approves the generated image: move the single file from temp_output to outputs and update DB.
     """
     try:
         session = db.query(GenerationSession).filter(GenerationSession.session_id == session_id).first()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        if session.approved:
-            return success_response("Image already approved", {"session_id": session_id})
-
-        # Move file to output folder
-        source_path = session.output_path 
-        if not os.path.exists(source_path):
-            raise HTTPException(status_code=404, detail="Generated image not found")
-
-        filename = os.path.basename(source_path)
-        destination = os.path.join(OUTPUT_DIR, filename)
-        shutil.copyfile(source_path, destination)   
-
-
-        # Update DB
         session.approved = True
         db.commit()
 
-        return success_response("Image approved and saved successfully", {
-            "session_id": session.session_id,
-            "final_output": destination,
-        }
+        return success_response(
+            "Image approved successfully",
+            data={
+                "session_id": session.session_id,
+                "final_output_image": session.output_path
+            }
         )
     except Exception as e:
         return error_response("Failed to approve image", dev_message=str(e), status_code=500)
+    
 
 
 @router.post("/change/{session_id}")
@@ -147,11 +138,13 @@ async def regenerate_image_with_new_prompt(
             relative_path = session.reference_image  # use previous image
 
         # Generate again
-        new_output_path = generate_3d(os.path.join("app", relative_path), output_dir=TEMP_OUTPUT_DIR)
+        full_output_path = os.path.join("app", session.output_path)
+        new_output_path = generate_3d(os.path.join("app", relative_path),  full_output_path)
 
 
         # Update DB
         session.input_prompt = new_prompt
+        session.reference_image = relative_path
         session.output_path = new_output_path
         session.attempts += 1
         session.approved = False
@@ -168,3 +161,44 @@ async def regenerate_image_with_new_prompt(
         )
     except Exception as e:
         return error_response("Failed to regenerate image", dev_message=str(e), status_code=500)
+
+    
+@router.get("/list")
+def get_all_generations(request: Request, db: Session = Depends(get_db)):
+    """
+    Fetch all generation sessions.
+    - Normal users: only their own sessions
+    - Admin/SuperAdmin: all sessions
+    """
+    try:
+        user = request.state.user  # user injected by auth middleware
+
+        # If admin or superadmin, fetch all sessions
+        if user.user_type in [1, 2]:  # 1=SuperAdmin, 2=Admin
+            sessions = db.query(GenerationSession).all()
+        else:
+            # Normal user sees only their own
+            sessions = db.query(GenerationSession).filter(
+                GenerationSession.user_id == user.user_id
+            ).all()
+
+        if not sessions:
+            return success_response("No generation sessions found", data=[])
+
+        results = []
+        for s in sessions:
+            results.append({
+                "session_id": s.session_id,
+                "user_id": s.user_id,
+                "input_prompt": s.input_prompt,
+                "reference_image": s.reference_image,
+                "output_path": s.output_path,
+                "approved": s.approved,
+                "attempts": s.attempts,
+                "created_at": s.created_at.isoformat() if s.created_at else None
+            })
+
+        return success_response("Generation sessions fetched successfully", results)
+
+    except Exception as e:
+        return error_response("Failed to fetch generation sessions", dev_message=str(e))

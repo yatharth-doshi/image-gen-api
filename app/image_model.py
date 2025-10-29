@@ -30,7 +30,7 @@ def login_hf(token: str):
 # Run 3D generation
 # -----------------------------
 run_py_path = "stable-fast-3d/run.py"
-def generate_3d(input_image_path: str, output_dir: str = "app/temp_output") -> str:
+def generate_3d(input_image_path: str, output_path: str ) -> str:
     """
     Takes an input image and generates 3D output using the stable-fast-3d model.
     
@@ -41,11 +41,11 @@ def generate_3d(input_image_path: str, output_dir: str = "app/temp_output") -> s
     Returns:
         Path to generated 3D output folder
     """
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     # Unique filename for output (so each generation is separate)
-    output_filename = f"{uuid4()}.png"
-    output_path = os.path.join(output_dir, output_filename)
+    
+    os.makedirs(output_path, exist_ok=True)
 
     # Run your 3D generation script
     command = f"python {run_py_path} {input_image_path} --output {output_path}"
@@ -56,12 +56,13 @@ def generate_3d(input_image_path: str, output_dir: str = "app/temp_output") -> s
     
    
     
-    if not os.path.exists(output_path):
-        raise FileNotFoundError(f"Expected output file not found: {output_path}")
+    if not os.path.isdir(output_path):
+        raise FileNotFoundError(f"Expected output directory not found: {output_path}")
+
     
 
     # Return the full file path (like "app/temp_output/abc123.png")
-    return output_path
+    return os.path.relpath(output_path, "app")
 
 # -----------------------------
 # Example usage (for testing)
