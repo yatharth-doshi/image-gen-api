@@ -13,7 +13,6 @@ def success_response(message: str, data: dict = None, status_code: int = 200)   
 
 def error_response(message: str, dev_message: str = None, status_code: int = 400):
     environment = os.getenv("ENVIRONMENT", "production")
-    print(os.getenv("ENVIRONMENT"), "NOW")
     response_content = {    
         "status": "error",
         "message": message,

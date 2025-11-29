@@ -3,10 +3,10 @@ from fastapi import HTTPException
 import shutil
 from app.helper.response_helper import success_response, error_response
 from sqlalchemy.orm import Session
-from app.deps import get_db
+from app.deps import get_db, get_current_user
 from app.image_model import generate_3d, login_hf
 
-from app.models import GenerationSession
+from app.models import GenerationSession, User
 import os
 from uuid import uuid4
 from dotenv import load_dotenv
@@ -33,16 +33,16 @@ login_hf(HF_TOKEN)
 async def generate(
     input_prompt: str = Form(...),
     reference_image: UploadFile = File(...),
-    request: Request = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        user = request.state.user  # extracted by middleware
+        user = current_user  # extracted by middleware
 
         # Ensure upload folder exists
         os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-    # Save the uploaded file
+        # Save the uploaded file
         file_ext = reference_image.filename.split(".")[-1]
         filename = f"{uuid4()}.{file_ext}"
         file_path = os.path.join(UPLOAD_DIR, filename)
@@ -56,7 +56,7 @@ async def generate(
 
         # Generate the image
         relative_output_path = generate_3d(file_path, output_path)
-    # Save path to DB (not file itself)
+        # Save path to DB (not file itself)
         session = GenerationSession(
             user_id=user.user_id,
             reference_image=relative_path,
@@ -69,20 +69,19 @@ async def generate(
         db.refresh(session)
 
         return success_response(
-        "Generation session created successfully",
-        data={
-            "session_id": session.session_id,
-            "reference_image": relative_path,
-             "temp_output_dir":relative_output_path
-        },
-        status_code=201
-  
-         )
+            "Generation session created successfully",
+            data={
+                "session_id": session.session_id,
+                "reference_image": relative_path,
+                "temp_output_dir":relative_output_path
+            },
+            status_code=200
+        )
     except Exception as e:
         # Capture any unexpected error and return detailed message in development
-     return error_response(
+        return error_response(
             message="Failed to create generation session",
-            dev_message=str(e),   # 🔥 this shows detailed reason if ENVIRONMENT=development
+            dev_message=str(e), 
             status_code=500
         )
 
@@ -164,22 +163,20 @@ async def regenerate_image_with_new_prompt(
 
     
 @router.get("/list")
-def get_all_generations(request: Request, db: Session = Depends(get_db)):
+def get_all_generations(current_user: User = Depends(get_current_user),  db: Session = Depends(get_db)):
     """
     Fetch all generation sessions.
     - Normal users: only their own sessions
     - Admin/SuperAdmin: all sessions
     """
     try:
-        user = request.state.user  # user injected by auth middleware
-
-        # If admin or superadmin, fetch all sessions
-        if user.user_type in [1, 2]:  # 1=SuperAdmin, 2=Admin
+       
+        if current_user.user_type in [1, 2]:  # 1=SuperAdmin, 2=Admin
             sessions = db.query(GenerationSession).all()
         else:
             # Normal user sees only their own
             sessions = db.query(GenerationSession).filter(
-                GenerationSession.user_id == user.user_id
+                GenerationSession.user_id == current_user.user_id
             ).all()
 
         if not sessions:

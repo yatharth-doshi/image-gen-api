@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status, Request
 from passlib.context import CryptContext
+from app.enums.user_type import UserType
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from app.database import SessionLocal
@@ -67,3 +68,13 @@ def verify_token(token: str, secret_key: str):
         return payload
     except JWTError:
         return None
+    
+def require_role(*allowed_roles: UserType):
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.user_type not in [role.value for role in allowed_roles]:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not allowed to access this resource"    
+            )
+        return current_user
+    return role_checker

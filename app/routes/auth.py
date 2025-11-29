@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.schemas import RefreshRequest
 from jose import jwt, JWTError
 from app.deps import REFRESH_SECRET_KEY ,verify_token
 from app.schemas import UserCreate, UserLogin, Token
-from app.models import User
+from app.models import User, GenerationSession
 from app.helper.response_helper import success_response, error_response, safe_api
 from app.enums.user_type import UserType
-from app.deps import get_db, get_password_hash, verify_password, create_access_token, create_refresh_token
+from app.deps import get_db, get_password_hash, verify_password, create_access_token, create_refresh_token, require_role
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -77,3 +77,60 @@ def refresh_token(payload: RefreshRequest, db: Session = Depends(get_db)):
         status_code=200
     )
 
+@router.get("/all-activities")
+def get_all_activities(
+    current_user: User = Depends(require_role(UserType.ADMIN, UserType.SUPERADMIN)),
+    db: Session = Depends(get_db)
+):
+    # Admin can see all generation sessions from all users
+    sessions = db.query(GenerationSession).join(User).all()
+    
+    session_data = []
+    for session in sessions:
+        session_data.append({
+            "session_id": session.session_id,
+            "user_id": session.user_id,
+            "user_email": current_user.email,
+            "user_name": f"{current_user.firstname} {current_user.lastname}",
+            "reference_image": session.reference_image,
+            "input_prompt": session.input_prompt,
+            "output_path": session.output_path,
+            "approved": session.approved,
+            "attempts": session.attempts,
+            "created_at": session.created_at.isoformat() if session.created_at else None
+        })
+    
+    return success_response(
+        "All user activities retrieved",
+        {"sessions": session_data, "total_sessions": len(session_data)}
+    )
+
+@router.get("/my-activity", response_model=dict)
+def get_my_activity(
+    current_user: User = Depends(require_role(UserType.USER)),
+    db: Session = Depends(get_db)
+):
+    
+    sessions = db.query(GenerationSession).filter(
+        GenerationSession.user_id == current_user.user_id
+    ).all()
+    
+    session_data = []
+    for session in sessions:
+        session_data.append({
+            "session_id": session.session_id,
+            "user_id": session.user_id,
+            "user_email": current_user.email,
+            "user_name": f"{current_user.firstname} {current_user.lastname}",
+            "reference_image": session.reference_image,
+            "input_prompt": session.input_prompt,
+            "output_path": session.output_path,
+            "approved": session.approved,
+            "attempts": session.attempts,
+            "created_at": session.created_at.isoformat() if session.created_at else None
+        })
+    
+    return success_response(
+        "User activities retrieved",
+        {"sessions": session_data, "total_sessions": len(session_data)}
+    )
