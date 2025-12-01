@@ -1,28 +1,15 @@
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+FROM python:3.10
 
-
-RUN apt-get update && apt-get install -y \
-    python3 python3-pip python3-dev \
-    build-essential \
-    ffmpeg \
-    libsm6 \
-    libxext6 \
-    libgl1-mesa-glx \
-    && rm -rf /var/lib/apt/lists/*
-
-
-WORKDIR /workspace
-
+WORKDIR /app
 
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy entire project
+COPY . .
 
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-
-COPY app ./app
-
+# Expose FastAPI port
 EXPOSE 8000
 
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0",  "--port", "8000"]
+# Run Uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

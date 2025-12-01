@@ -77,6 +77,6 @@ if __name__ == "__main__":
     
     # Example input
     input_image = "images/image6.jpg"
-    output_folder = generate_3d(input_image)
+    output_folder = generate_3d(input_image, "/")
     
     print(f"3D files saved in: {output_folder}")

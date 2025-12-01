@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi import HTTPException
-import shutil
 from app.helper.response_helper import success_response, error_response
 from sqlalchemy.orm import Session
 from app.deps import get_db, get_current_user
