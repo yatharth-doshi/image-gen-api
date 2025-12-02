@@ -23,11 +23,12 @@ class GenerationSession(Base):
     
     session_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id"))
-    reference_image = Column(String, nullable=False)  # store relative path
+    reference_image = Column(String, nullable=True)  
     input_prompt = Column(Text, nullable=False)
     output_path = Column(String, nullable=True)
     approved = Column(Boolean, default=False)
     attempts = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), default=func.now())
     
     user = relationship("User", back_populates="sessions")

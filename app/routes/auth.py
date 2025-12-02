@@ -42,13 +42,22 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     
     access_token = create_access_token(user.user_id)
     refresh_token = create_refresh_token(user.user_id)
+
+    user_data = {
+        "user_id": user.user_id,
+        "email": user.email,
+        "firstname": user.firstname,
+        "lastname": user.lastname   
+    }   
+
     
     return success_response(
         "User logged in successfully",
         {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "token_type": "Bearer"
+            "token_type": "Bearer",
+            "user_details": user_data
         },
         status_code=200
     )

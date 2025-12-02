@@ -44,6 +44,9 @@ UPLOAD_DIR = "app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+OUTPUT_DIR = "app/outputs"
+app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
+
 @app.get("/")
 def root():
     return {"message":"API is running"}
