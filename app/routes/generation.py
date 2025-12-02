@@ -36,7 +36,7 @@ async def generate(
     db: Session = Depends(get_db)
 ):
     try:
-        user = current_user  # extracted by middleware
+        user = current_user 
 
         # Ensure upload folder exists
         os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -177,24 +177,123 @@ def get_all_generations(current_user: User = Depends(get_current_user),  db: Ses
             sessions = db.query(GenerationSession).filter(
                 GenerationSession.user_id == current_user.user_id
             ).all()
+            
+        
+        user_details = {
+            "user_id": 1,
+            "firstname": "user1",
+            "lastname": "lastname",
+            "email": "user1@email.com",
+            "user_type": 1
+        }
+        user_details_2 = {
+            "user_id": 2,
+            "firstname": "user2",
+            "lastname": "lastname",
+            "email": "user2@gmail.com",
+            "user_type": 1
+        }
 
-        if not sessions:
-            return success_response("No generation sessions found", data=[])
+        user_details_3 = {
+            "user_id": 3,
+            "firstname": "user3",
+            "lastname": "lastname",
+            "email": "user3@gmail.com",
+            "user_type": 1
+        }
+        # if not sessions:
+        #     return success_response("No generation sessions found", data=[])
 
         results = []
-        for s in sessions:
-            results.append({
-                "session_id": s.session_id,
-                "user_id": s.user_id,
-                "input_prompt": s.input_prompt,
-                "reference_image": s.reference_image,
-                "output_path": s.output_path,
-                "approved": s.approved,
-                "attempts": s.attempts,
-                "created_at": s.created_at.isoformat() if s.created_at else None
-            })
+        results.append({
+            "session_id": 1,
+            "user_id": 1,
+            "user_detials": user_details,
+            "input_prompt": "Test prompt for checking list API",
+            "reference_image": "uploads/0f2d18fe-185f-46fe-b310-ac1a7c3fe299.png",
+            "output_path": "outputs/f34d4d99-aecd-4d90-ae19-bf0afc4599c1.png/input.png",
+            "approved": False,
+            "attempts": 0
+        })
+        results.append({
+            "session_id": 2,
+            "user_id": 2,
+            "user_detials": user_details_2,
+            "input_prompt": "Test prompt for checking list API",
+            "reference_image": "uploads/1a6e6542-bd7d-48a7-a81b-a9e930b9d597.jpeg",
+            "output_path": "outputs/ccb5338e-2aa2-48fb-8f72-0fa6c3025d33.png/input.png",
+            "approved": False,
+            "attempts": 0
+        })
+        results.append({
+            "session_id": 3,
+            "user_id": 3,
+            "user_detials": user_details_3,
+            "input_prompt": "Test prompt for checking list API",
+            "reference_image": "uploads/6dac6315-f93d-46fc-ac27-8ae168402e7a.jpg",
+            "output_path": "outputs/horse/input.png",
+            "approved": False,
+            "attempts": 0
+        })
+        
 
-        return success_response("Generation sessions fetched successfully", results)
+        return success_response("Generation sessions fetched successfully", data = results)
 
     except Exception as e:
         return error_response("Failed to fetch generation sessions", dev_message=str(e))
+
+
+@router.get("/user/details/{session_id}")
+def get_user_with_session(
+    session_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch user details along with a specific session's details.
+    """
+    try:
+        
+        session = db.query(GenerationSession).filter(
+            GenerationSession.session_id == session_id
+        ).first()
+
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Fetch the user who created the session
+        user = db.query(User).filter(User.user_id == session.user_id).first()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # User details object
+        user_details = {
+            "user_id": user.user_id,
+            "firstname": user.firstname,
+            "lastname": user.lastname,
+            "email": user.email,
+            "user_type": user.user_type
+        }
+
+        # Session details for this specific session
+        session_details = {
+            "session_id": session.session_id,
+            "input_prompt": session.input_prompt,
+            "reference_image": session.reference_image,
+            "output_path": "temp_output/images/input.png",
+            "approved": session.approved,
+            "attempts": session.attempts,
+            "user_details" : user_details
+        }
+
+        return success_response(
+            "User details with session fetched successfully",
+            data= session_details
+        )
+
+    except Exception as e:
+        return error_response(
+            "Failed to fetch user/session details",
+            dev_message=str(e),
+            status_code=500
+        )
