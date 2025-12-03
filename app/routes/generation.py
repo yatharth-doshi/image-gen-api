@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+from typing import Optional
 from fastapi import HTTPException
 from app.helper.response_helper import success_response, error_response
 from app.helper.runpod_helper import submit_job, wait_for_output
+from app.helper.s3_helper import s3_helper
 from sqlalchemy.orm import Session
 from app.deps import get_db, get_current_user
 
@@ -14,36 +16,38 @@ load_dotenv()
 
 router = APIRouter(prefix="/generate", tags=["generation"])
 
-# UPLOAD_DIR = "app/uploads"
-# OUTPUT_DIR = "app/outputs"
-
-# os.makedirs(UPLOAD_DIR, exist_ok=True)
-# os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-
-# HF_TOKEN = os.getenv("HF_TOKEN")
-# if not HF_TOKEN:
-#     raise ValueError("Missing HF_TOKEN in environment variables")
-# login_hf(HF_TOKEN)
-
-
 @router.post("/")
 async def generate(
     input_prompt: str = Form(...),
+    reference_image: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
+        reference_s3_key = None
 
-        job_id = await submit_job(input_prompt)
+        if reference_image:
+
+            reference_s3_key = s3_helper.upload_file(
+                    reference_image, 
+                    folder = "image-generation"
+            )
+    
+        referenece_image_url = reference_s3_key["s3_key"]
+    
+        job_id = await submit_job(input_prompt, referenece_image_url)  
         runpod_result = await wait_for_output(job_id)
-        print("RunPod Result", runpod_result)
+        
+
+        generated_image_url = runpod_result.get("image_key", "")   
         
         session = GenerationSession(
             user_id= current_user.user_id,
-            reference_image= None,
+            reference_image= referenece_image_url,
             input_prompt=input_prompt,
-            output_path= runpod_result.get("image_url", "")
+            output_path= generated_image_url,
+            approved=False,
+            attempts=1
         )
 
         db.add(session)
@@ -55,6 +59,7 @@ async def generate(
             data= {
                 "session_id": session.session_id,
                 "user_id": session.user_id,
+                "reference_image" : referenece_image_url,
                 "input_prompt": session.input_prompt,
                 "output_path": session.output_path,
                 "approved": session.approved,
@@ -65,6 +70,7 @@ async def generate(
             status_code=200
         )
     except Exception as e:
+
         # Capture any unexpected error and return detailed message in development
         return error_response(
             message="Failed to create generation session",
@@ -118,9 +124,19 @@ async def regenerate_image_with_new_prompt(
                 "No previous image exists for this session",
                 status_code=400
             )
+        
+        if previous_image:
 
-        job_id = await submit_job(new_prompt)
+            previous_image_s3_key = s3_helper.upload_file(
+                    previous_image, 
+                    folder = "image-generation"
+            )
+
+        new_image_url = previous_image_s3_key["s3_key"]
+
+        job_id = await submit_job(new_prompt,new_image_url)
         runpod_result = await wait_for_output(job_id)
+       
 
         new_image_url = runpod_result.get("image_url", "")
 
@@ -166,15 +182,11 @@ def get_all_generations(current_user: User = Depends(get_current_user),  db: Ses
         if not sessions:
             return success_response("No generation sessions found", data=[])
         
-
         session_data = []
-
-        
 
         for s in sessions:
 
             user = db.query(User).filter(User.user_id == s.user_id).first()
-
             if not user:
                 raise HTTPException(status_code=404, detail="User not found")
 

@@ -1,12 +1,13 @@
 import time, requests
 import os
 
-RUNPOD_ENDPOINT = f"https://api.runpod.ai/v2/{os.getenv("RUNPOD_ENDPOINT")}/run"
-STATUS_URL = f"https://api.runpod.ai/v2/{os.getenv("RUNPOD_ENDPOINT")}/status"
+RUNPOD_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/run"
+STATUS_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/status"
 
 
-async def submit_job(prompt):
-    res = requests.post(RUNPOD_ENDPOINT, headers={"Authorization": os.getenv("RUNPOD_API_KEY")} , json={"input": {"prompt": prompt}}).json()
+async def submit_job(prompt, image_url: str = None):
+   
+    res = requests.post(RUNPOD_URL, headers={"Authorization": os.getenv("RUNPOD_API_KEY")} , json={"input": {"prompt": prompt, "image_urls": [image_url] }}).json()
     return res["id"]
 
 
