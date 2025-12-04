@@ -124,27 +124,16 @@ async def regenerate_image_with_new_prompt(
                 "No previous image exists for this session",
                 status_code=400
             )
-        
-        if previous_image:
 
-            previous_image_s3_key = s3_helper.upload_file(
-                    previous_image, 
-                    folder = "image-generation"
-            )
-
-        new_image_url = previous_image_s3_key["s3_key"]
-
-        job_id = await submit_job(new_prompt,new_image_url)
+        job_id = await submit_job(new_prompt,previous_image)
         runpod_result = await wait_for_output(job_id)
        
-
-        new_image_url = runpod_result.get("image_url", "")
-
+        new_image_url = runpod_result.get("image_key", "")
 
         # Update DB
         session.input_prompt = new_prompt
         session.reference_image = previous_image
-        session.output_path = runpod_result.get("image_url", "")
+        session.output_path = new_image_url
         session.attempts += 1
         session.approved = False
         db.commit()
@@ -153,9 +142,12 @@ async def regenerate_image_with_new_prompt(
             "New image generated successfully",
             data={
                 "session_id": session.session_id,
-                "reference_image": previous_image,
-                "new_output_dir": new_image_url,
-                "attempts": session.attempts
+                "new_input_prompt": session.input_prompt,
+                "reference_image": session.reference_image,
+                "new_output_dir": session.output_path,
+                "attempts": session.attempts,
+                "created_at": str(session.created_at),
+                "updated_at": str(session.updated_at)
             }
         )
     except Exception as e:
