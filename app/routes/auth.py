@@ -47,7 +47,8 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         "user_id": user.user_id,
         "email": user.email,
         "firstname": user.firstname,
-        "lastname": user.lastname   
+        "lastname": user.lastname,
+        "user_type": user.user_type    
     }   
 
     

@@ -1,5 +1,6 @@
 import time, requests
 import os
+from fastapi import HTTPException
 
 RUNPOD_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/run"
 STATUS_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/status"
@@ -7,13 +8,19 @@ STATUS_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/status"
 
 async def submit_job(prompt, image_urls: list = None) :
    
+    if image_urls is None:
+        image_urls = []
+            
     if isinstance(image_urls, str):
         image_urls = [image_urls] 
         
     elif isinstance(image_urls, list):
         pass
     else:
-        raise HTTPException(status_code=400, detail="image_urls must be string or list of strings")
+        raise HTTPException(
+            status_code=400,
+            detail="image_urls must be string or list of strings"
+        )
 
     payload = {
         "input": {

@@ -23,7 +23,8 @@ class GenerationSession(Base):
     
     session_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id"))
-    reference_image = Column(String, nullable=True)  
+    reference_image = Column(String, nullable=True) 
+    reference_images = Column(Text, nullable=True) 
     input_prompt = Column(Text, nullable=False)
     output_path = Column(String, nullable=True)
     approved = Column(Boolean, default=False)
@@ -32,3 +33,16 @@ class GenerationSession(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), default=func.now())
     
     user = relationship("User", back_populates="sessions")
+
+class GenerationAttempt(Base):
+    __tablename__ = "generation_attempts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("generation_sessions.session_id"))
+    prompt = Column(Text)
+    reference_image = Column(Text)
+    reference_images = Column(Text)
+    output_path = Column(Text)
+    attempt_number = Column(Integer)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), default=func.now())
