@@ -8,9 +8,9 @@ RUNPOD_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/run"
 STATUS_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/status"
 
 
-async def submit_job(prompt, image_urls: list = None) :
+async def submit_job(prompt, image_urls: list = []) :
    
-    if image_urls is None:
+    if image_urls is [] or image_urls is None:
         image_urls = []
             
     if isinstance(image_urls, str):
