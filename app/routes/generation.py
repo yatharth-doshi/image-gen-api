@@ -28,7 +28,7 @@ async def generate(
         reference_images_list = []  # List for multiple images
         single_reference_image = None
 
-        if reference_image:
+        if reference_image and reference_image != "":
             reference_s3_key = s3_helper.upload_file(
                 reference_image, 
                 folder = "image-generation"
@@ -37,9 +37,7 @@ async def generate(
             reference_images_list.append(single_reference_image)
     
         job_id = await submit_job(input_prompt, reference_images_list)  
-        runpod_result = await wait_for_output(job_id)
-        print(runpod_result)
-        
+        runpod_result = await wait_for_output(job_id)        
 
         generated_image_url = runpod_result.get("image_key", "")   
         
@@ -61,7 +59,7 @@ async def generate(
             session_id=session.session_id,
             prompt=input_prompt,
             reference_image=single_reference_image,
-            reference_images=json.dumps(reference_images_list),
+            reference_images=json.dumps(reference_images_list) if reference_images_list else None,
             output_path=generated_image_url,
             attempt_number=1
         )
@@ -75,7 +73,7 @@ async def generate(
                 "session_id": session.session_id,
                 "user_id": session.user_id,
                 "reference_image" : single_reference_image,
-                "reference_images": json.loads(session.reference_images) if session.reference_images else [],
+                "reference_images": json.loads(session.reference_images) if session.reference_images and session.reference_images != "" else [],
                 "input_prompt": session.input_prompt,
                 "output_path": session.output_path,
                 "approved": session.approved,
