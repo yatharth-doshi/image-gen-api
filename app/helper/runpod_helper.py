@@ -1,8 +1,9 @@
 import time, requests
 import os
 from fastapi import HTTPException
+from dotenv import load_dotenv
 
-print(os.getenv('RUNPOD_ENDPOINT'), "HAHA")
+load_dotenv()
 
 RUNPOD_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/run"
 STATUS_URL=f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/status"

@@ -6,10 +6,11 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from app.database import SessionLocal
 from app.models import User
+import bcrypt
 
 
-SECRET_KEY = "your_secret_key_here"
-REFRESH_SECRET_KEY = "your_refresh_secret_key_here"
+SECRET_KEY = "abcd"
+REFRESH_SECRET_KEY = "abcd"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -24,12 +25,57 @@ def get_db():
     finally:
         db.close()
 
-# ---------- Password Utils ----------
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+def safe_password_truncate(password: str) -> str:
+    """
+    Safely truncate password to 72 bytes for bcrypt compatibility.
+    Handles UTF-8 multi-byte characters properly.
+    """
+    if not password:
+        return password
+    
+    password_bytes = password.encode('utf-8')
+    
+    if len(password_bytes) <= 72:
+        return password
+    
+    truncated_bytes = password_bytes[:72]
+    
+    try:
+        return truncated_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        for i in range(1, 4):  # UTF-8 chars 1-4 bytes
+            try:
+                return truncated_bytes[:-i].decode('utf-8')
+            except UnicodeDecodeError:
+                continue
+        return ""
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+def validate_password(password: str) -> tuple[bool, str]:
+    """Validate password and return (is_valid, error_message)"""
+    if not password:
+        return False, "Password cannot be empty"
+    if len(password) < 6:
+        return False, "Password must be at least 6 characters long"
+    return True, ""
+
+def get_password_hash(password: str) -> str:
+    """Hash a password using bcrypt directly"""
+    is_valid, error_message = validate_password(password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_message
+        )
+    
+    password_to_hash = safe_password_truncate(password).encode('utf-8')
+    hashed = bcrypt.hashpw(password_to_hash, bcrypt.gensalt())
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its bcrypt hash"""
+    password_bytes = safe_password_truncate(plain_password).encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 # ---------- JWT ----------
 def create_access_token(user_id: int) -> str:
