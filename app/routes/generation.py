@@ -30,8 +30,8 @@ async def generate(
 
         if reference_image:
             reference_s3_key = s3_helper.upload_file(
-                    reference_image, 
-                    folder = "image-generation"
+                reference_image, 
+                folder = "image-generation"
             )
             single_reference_image = reference_s3_key["s3_key"]
             reference_images_list.append(single_reference_image)
