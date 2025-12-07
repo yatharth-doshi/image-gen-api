@@ -9,3 +9,5 @@ app/output/
 app/temp_output/
 .DS_Store
 app/outputs/
+
+venv
