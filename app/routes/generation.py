@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
-from typing import Optional,List
+from typing import Optional
 import json
 # from fastapi import HTTPException
 from app.helper.response_helper import success_response, error_response
