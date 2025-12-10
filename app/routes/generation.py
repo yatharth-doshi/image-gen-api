@@ -37,9 +37,7 @@ async def generate(
             reference_images_list.append(single_reference_image)
     
         job_id = await submit_job(input_prompt, reference_images_list)  
-        runpod_result = await wait_for_output(job_id)
-        print(runpod_result)
-        
+        runpod_result = await wait_for_output(job_id)        
 
         generated_image_url = runpod_result.get("image_key", "")   
         
